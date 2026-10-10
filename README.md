@@ -20,17 +20,19 @@
 
 ### 第二步：获取掘金 Cookie 和签名参数
 
-掘金接口需要 Cookie + 5 个签名参数（`aid`、`uuid`、`spider`、`msToken`、`a_bogus`）才能正常调用。
+掘金接口需要 Cookie + 签名参数才能正常调用。**第一次配置需要获取全部参数，后续只需要更新 4 个会过期的即可。**
 
-**获取方法：**
+**获取方法（从同一个 POST 请求里一次性拿全）：**
 
 1. 打开浏览器，访问 [掘金官网](https://juejin.cn/) 并登录
 2. 按 `F12` 打开开发者工具，切换到 **Network（网络）** 标签页
-3. 在筛选框里输入 `get_cur_point`，然后刷新页面
-4. 点击列表中出现的 `get_cur_point` 请求
-5. 在右侧 **Headers** 面板中：
-   - 往下找到 **Request Headers** → `cookie:` → 复制整行值（这是 `JUEJIN_COOKIE`）
-   - 往上找到 **Query String Parameters**（查询参数），分别复制：
+3. 在筛选框里输入 `check_in`
+4. **手动点一下页面上的「立即签到」按钮**（如果今天已签就点抽奖）
+5. 点击列表中出现的 `check_in`（或 `lottery/draw`）POST 请求
+6. 在右侧 **Headers** 面板中，分别复制以下值：
+   - **Request Headers** → `cookie:` → `JUEJIN_COOKIE`
+   - **Request Headers** → `x-secsdk-csrf-token:` → `JUEJIN_CSRF_TOKEN`
+   - **Query String Parameters**（查询参数）：
      - `aid` → `JUEJIN_AID`
      - `uuid` → `JUEJIN_UUID`
      - `spider` → `JUEJIN_SPIDER`
@@ -39,7 +41,7 @@
 
 > ⚠️ **注意**：这些都是你的登录凭证，请勿泄露给他人！
 >
-> 💡 **提示**：`msToken` 和 `a_bogus` 有效期较长（约 18 天以上），失效后重新获取即可。
+> 💡 **提示**：`aid`、`uuid`、`spider` 基本是固定的，配置一次就行。需要定期更新的只有 `Cookie`、`msToken`、`a_bogus`、`x-secsdk-csrf-token` 这 4 个。
 
 ### 第三步：配置 Secrets
 
@@ -47,16 +49,17 @@
 2. 点击 **Settings** → 左侧菜单找到 **Secrets and variables** → **Actions**
 3. 点击 **New repository secret** 按钮，添加以下 Secret：
 
-| Name | 说明 | 必填 |
-|------|------|------|
-| `JUEJIN_COOKIE` | 掘金登录 Cookie | ✅ 是 |
-| `JUEJIN_AID` | 签名参数 aid | ✅ 是 |
-| `JUEJIN_UUID` | 签名参数 uuid | ✅ 是 |
-| `JUEJIN_SPIDER` | 签名参数 spider | ✅ 是 |
-| `JUEJIN_MS_TOKEN` | 签名参数 msToken | ✅ 是 |
-| `JUEJIN_A_BOGUS` | 签名参数 a_bogus | ✅ 是 |
-| `PUSHPLUS_TOKEN` | PushPlus 微信推送 Token | ❌ 否 |
-| `SERVERCHAN_KEY` | Server酱 推送 Key | ❌ 否 |
+| Name | 说明 | 必填 | 有效期 |
+|------|------|------|--------|
+| `JUEJIN_COOKIE` | 掘金登录 Cookie | ✅ 是 | 约 1 个月 |
+| `JUEJIN_AID` | 应用 ID（固定值 2608） | ✅ 是 | 永久不变 |
+| `JUEJIN_UUID` | 设备/用户唯一标识 | ✅ 是 | 基本不变 |
+| `JUEJIN_SPIDER` | 爬虫标识（固定值 0） | ✅ 是 | 永久不变 |
+| `JUEJIN_MS_TOKEN` | 安全签名 token | ✅ 是 | 约 15-30 天 |
+| `JUEJIN_A_BOGUS` | 接口签名参数 | ✅ 是 | 约 15-30 天 |
+| `JUEJIN_CSRF_TOKEN` | CSRF 防御令牌（POST 请求需要） | ✅ 是 | 约 15-30 天 |
+| `PUSHPLUS_TOKEN` | PushPlus 微信推送 Token | ❌ 否 | - |
+| `SERVERCHAN_KEY` | Server酱 推送 Key | ❌ 否 | - |
 
 ### 第四步：启用 Actions
 
@@ -145,18 +148,36 @@ npm start
 4. **Actions 配额**：GitHub 免费账户每月有 2000 分钟的 Actions 运行时间，本项目每天仅运行约 30 秒，完全够用
 5. **仓库权限**：确保 Fork 的仓库是 Public 的，Private 仓库的 Actions 配额较少
 
-## 🔄 接口报错 / 返回空怎么办？
+## 🔄 接口报错 / 参数过期怎么办？
 
-如果签到失败或返回空数据，可能是 Cookie 或签名参数过期了：
+当 Actions 运行失败、日志里出现 `must login`、返回空数据或签到失败时，说明有参数过期了。
 
-1. 重新登录掘金，按 F12 打开 Network
-2. 筛选 `get_cur_point`，刷新页面
-3. 点击请求，从 **Request Headers** 复制新的 `cookie`
-4. 从 **Query String Parameters** 复制新的 `msToken` 和 `a_bogus`
-5. 进入仓库 **Settings** → **Secrets and variables** → **Actions**
-6. 更新对应的 Secret 值并保存
+### 需要定期更新的参数（4 个）
 
-> 💡 一般只需要更新 `JUEJIN_COOKIE`、`JUEJIN_MS_TOKEN`、`JUEJIN_A_BOGUS` 这三个就行，`aid`、`uuid`、`spider` 基本不会变。
+| Secret | 更新频率 | 从哪里获取 |
+|--------|---------|-----------|
+| `JUEJIN_COOKIE` | 约 1 个月 | Request Headers → `cookie` |
+| `JUEJIN_MS_TOKEN` | 约 15-30 天 | Query String Parameters → `msToken` |
+| `JUEJIN_A_BOGUS` | 约 15-30 天 | Query String Parameters → `a_bogus` |
+| `JUEJIN_CSRF_TOKEN` | 约 15-30 天 | Request Headers → `x-secsdk-csrf-token` |
+
+> 💡 **`aid`、`uuid`、`spider` 基本不会变**，配置一次就行，不用管。
+
+### 更新步骤
+
+1. 打开掘金官网，确保已登录
+2. 按 `F12` → Network → 筛选 `check_in`
+3. **手动点一下签到按钮**（如果今天已签就点抽奖）
+4. 点击抓到的 `check_in`（或 `lottery/draw`）POST 请求
+5. 分别复制以下 4 个值：
+   - **Request Headers** 里的 `cookie` → `JUEJIN_COOKIE`
+   - **Request Headers** 里的 `x-secsdk-csrf-token` → `JUEJIN_CSRF_TOKEN`
+   - **Query String Parameters** 里的 `msToken` → `JUEJIN_MS_TOKEN`
+   - **Query String Parameters** 里的 `a_bogus` → `JUEJIN_A_BOGUS`
+6. 进入仓库 **Settings** → **Secrets and variables** → **Actions**
+7. 找到对应的 Secret，点击右侧的 **Update**，粘贴新值保存
+
+> 💡 **技巧**：这 4 个值从**同一个 POST 请求**里一次性就能拿全，建议从 `check_in` 请求里取。
 
 ## 📜 免责声明
 

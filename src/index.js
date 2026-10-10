@@ -7,6 +7,7 @@ const UUID = process.env.JUEJIN_UUID || '';
 const SPIDER = process.env.JUEJIN_SPIDER || '';
 const MS_TOKEN = process.env.JUEJIN_MS_TOKEN || '';
 const A_BOGUS = process.env.JUEJIN_A_BOGUS || '';
+const CSRF_TOKEN = process.env.JUEJIN_CSRF_TOKEN || '';
 
 const PUSHPLUS_TOKEN = process.env.PUSHPLUS_TOKEN || '';
 const SERVERCHAN_KEY = process.env.SERVERCHAN_KEY || '';
@@ -24,10 +25,20 @@ if (A_BOGUS) commonParams.a_bogus = A_BOGUS;
 const headers = {
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36',
+  'content-type': 'application/json',
   Referer: 'https://juejin.cn/',
   Origin: 'https://juejin.cn',
   Cookie: COOKIE,
 };
+
+// POST 请求需要额外加 CSRF token
+function getPostHeaders() {
+  const h = { ...headers };
+  if (CSRF_TOKEN) {
+    h['x-secsdk-csrf-token'] = CSRF_TOKEN;
+  }
+  return h;
+}
 
 // ============== 工具函数 ==============
 function log(msg, type = 'info') {
@@ -116,12 +127,15 @@ async function getTodayStatus() {
 async function checkIn() {
   try {
     const res = await axios.post(`${BASE_URL}/check_in`, {}, {
-      headers,
+      headers: getPostHeaders(),
       params: buildParams(),
     });
     return safeParse(res);
   } catch (e) {
-    log(`签到请求失败: ${e.message}`, 'error');
+    const detail = e.response
+      ? `HTTP ${e.response.status}: ${JSON.stringify(e.response.data).slice(0, 200)}`
+      : e.message;
+    log(`签到请求失败: ${detail}`, 'error');
     return null;
   }
 }
@@ -158,7 +172,7 @@ async function getLotteryConfig() {
 async function lotteryDraw() {
   try {
     const res = await axios.post(`${BASE_URL}/lottery/draw`, {}, {
-      headers,
+      headers: getPostHeaders(),
       params: buildParams(),
     });
     return safeParse(res);
@@ -186,7 +200,7 @@ async function dipLucky(lid) {
     const res = await axios.post(
       `${BASE_URL}/lottery_lucky/dip_lucky`,
       { lottery_history_id: lid },
-      { headers, params: buildParams() }
+      { headers: getPostHeaders(), params: buildParams() }
     );
     return safeParse(res);
   } catch (e) {

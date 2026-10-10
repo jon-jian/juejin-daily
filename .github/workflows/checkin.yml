@@ -46,6 +46,7 @@ jobs:
           JUEJIN_SPIDER: ${{ secrets.JUEJIN_SPIDER }}
           JUEJIN_MS_TOKEN: ${{ secrets.JUEJIN_MS_TOKEN }}
           JUEJIN_A_BOGUS: ${{ secrets.JUEJIN_A_BOGUS }}
+          JUEJIN_CSRF_TOKEN: ${{ secrets.JUEJIN_CSRF_TOKEN }}
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
         run: npm start
