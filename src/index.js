@@ -2,14 +2,28 @@ const axios = require('axios');
 
 // ============== 配置 ==============
 const COOKIE = process.env.JUEJIN_COOKIE || '';
+const AID = process.env.JUEJIN_AID || '';
+const UUID = process.env.JUEJIN_UUID || '';
+const SPIDER = process.env.JUEJIN_SPIDER || '';
+const MS_TOKEN = process.env.JUEJIN_MS_TOKEN || '';
+const A_BOGUS = process.env.JUEJIN_A_BOGUS || '';
+
 const PUSHPLUS_TOKEN = process.env.PUSHPLUS_TOKEN || '';
 const SERVERCHAN_KEY = process.env.SERVERCHAN_KEY || '';
 
 const BASE_URL = 'https://api.juejin.cn/growth_api/v1';
 
+// 公共请求参数（签名相关）
+const commonParams = {};
+if (AID) commonParams.aid = AID;
+if (UUID) commonParams.uuid = UUID;
+if (SPIDER) commonParams.spider = SPIDER;
+if (MS_TOKEN) commonParams.msToken = MS_TOKEN;
+if (A_BOGUS) commonParams.a_bogus = A_BOGUS;
+
 const headers = {
   'User-Agent':
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36',
   Referer: 'https://juejin.cn/',
   Origin: 'https://juejin.cn',
   Cookie: COOKIE,
@@ -30,6 +44,24 @@ function log(msg, type = 'info') {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// 合并公共参数和额外参数
+function buildParams(extra = {}) {
+  return { ...commonParams, ...extra };
+}
+
+// 安全解析响应
+function safeParse(res) {
+  if (!res || !res.data) return null;
+  if (typeof res.data === 'string') {
+    try {
+      return JSON.parse(res.data);
+    } catch {
+      return { err_no: -1, err_msg: '返回数据不是JSON: ' + res.data.slice(0, 100) };
+    }
+  }
+  return res.data;
 }
 
 // ============== 推送通知 ==============
@@ -69,8 +101,11 @@ async function pushNotification(title, content) {
 /** 获取今日签到状态 */
 async function getTodayStatus() {
   try {
-    const res = await axios.get(`${BASE_URL}/get_today_status`, { headers });
-    return res.data;
+    const res = await axios.get(`${BASE_URL}/get_today_status`, {
+      headers,
+      params: buildParams(),
+    });
+    return safeParse(res);
   } catch (e) {
     log(`获取签到状态失败: ${e.message}`, 'error');
     return null;
@@ -80,8 +115,11 @@ async function getTodayStatus() {
 /** 签到 */
 async function checkIn() {
   try {
-    const res = await axios.post(`${BASE_URL}/check_in`, {}, { headers });
-    return res.data;
+    const res = await axios.post(`${BASE_URL}/check_in`, {}, {
+      headers,
+      params: buildParams(),
+    });
+    return safeParse(res);
   } catch (e) {
     log(`签到请求失败: ${e.message}`, 'error');
     return null;
@@ -91,8 +129,11 @@ async function checkIn() {
 /** 获取当前矿石数 */
 async function getCurPoint() {
   try {
-    const res = await axios.get(`${BASE_URL}/get_cur_point`, { headers });
-    return res.data;
+    const res = await axios.get(`${BASE_URL}/get_cur_point`, {
+      headers,
+      params: buildParams(),
+    });
+    return safeParse(res);
   } catch (e) {
     log(`获取矿石数失败: ${e.message}`, 'error');
     return null;
@@ -102,8 +143,11 @@ async function getCurPoint() {
 /** 获取免费抽奖次数配置 */
 async function getLotteryConfig() {
   try {
-    const res = await axios.get(`${BASE_URL}/lottery_config/get`, { headers });
-    return res.data;
+    const res = await axios.get(`${BASE_URL}/lottery_config/get`, {
+      headers,
+      params: buildParams(),
+    });
+    return safeParse(res);
   } catch (e) {
     log(`获取抽奖配置失败: ${e.message}`, 'error');
     return null;
@@ -113,8 +157,11 @@ async function getLotteryConfig() {
 /** 抽奖 */
 async function lotteryDraw() {
   try {
-    const res = await axios.post(`${BASE_URL}/lottery/draw`, {}, { headers });
-    return res.data;
+    const res = await axios.post(`${BASE_URL}/lottery/draw`, {}, {
+      headers,
+      params: buildParams(),
+    });
+    return safeParse(res);
   } catch (e) {
     log(`抽奖请求失败: ${e.message}`, 'error');
     return null;
@@ -126,9 +173,9 @@ async function getLuckyList() {
   try {
     const res = await axios.get(`${BASE_URL}/lottery_history/global_big`, {
       headers,
-      params: { page_no: 1, page_size: 5 },
+      params: buildParams({ page_no: 1, page_size: 5 }),
     });
-    return res.data;
+    return safeParse(res);
   } catch (e) {
     return null;
   }
@@ -139,9 +186,9 @@ async function dipLucky(lid) {
     const res = await axios.post(
       `${BASE_URL}/lottery_lucky/dip_lucky`,
       { lottery_history_id: lid },
-      { headers }
+      { headers, params: buildParams() }
     );
-    return res.data;
+    return safeParse(res);
   } catch (e) {
     return null;
   }
@@ -154,6 +201,12 @@ async function main() {
   if (!COOKIE) {
     log('未配置 JUEJIN_COOKIE 环境变量，退出', 'error');
     process.exit(1);
+  }
+
+  const hasSignParams = MS_TOKEN && A_BOGUS;
+  if (!hasSignParams) {
+    log('⚠️  未配置 msToken / a_bogus，部分接口可能返回空', 'warn');
+    log('   请参考 README 从浏览器请求中提取这些参数', 'warn');
   }
 
   const results = [];
@@ -178,7 +231,7 @@ async function main() {
       log(`签到成功！获得 ${incr_point} 矿石，当前总矿石: ${sum_point}`, 'success');
       results.push(`签到: 成功 +${incr_point}矿石 (总${sum_point})`);
     } else {
-      const msg = checkInRes ? checkInRes.err_msg : '未知错误';
+      const msg = checkInRes ? (checkInRes.err_msg || '未知错误') : '请求失败';
       log(`签到失败: ${msg}`, 'error');
       results.push(`签到: 失败 - ${msg}`);
     }
@@ -207,7 +260,7 @@ async function main() {
         log(`幸运值: +${draw_lucky_value} (总: ${total_lucky_value})`, 'info');
         results.push(`抽奖: ${lottery_name} (+${draw_lucky_value}幸运值)`);
       } else {
-        const msg = drawRes ? drawRes.err_msg : '未知错误';
+        const msg = drawRes ? (drawRes.err_msg || '未知错误') : '请求失败';
         log(`抽奖失败: ${msg}`, 'error');
         results.push(`抽奖: 失败 - ${msg}`);
       }
@@ -216,7 +269,7 @@ async function main() {
       results.push('抽奖: 今日无免费次数');
     }
   } else {
-    const msg = lotteryConfig ? lotteryConfig.err_msg : '请求失败';
+    const msg = lotteryConfig ? (lotteryConfig.err_msg || '未知错误') : '请求失败';
     log(`获取抽奖配置失败: ${msg}`, 'error');
     results.push(`抽奖: 配置查询失败 - ${msg}`);
   }

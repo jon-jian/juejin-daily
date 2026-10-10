@@ -18,15 +18,28 @@
 
 点击右上角的 **Fork** 按钮，将本仓库复制到你自己的 GitHub 账号下。
 
-### 第二步：获取掘金 Cookie
+### 第二步：获取掘金 Cookie 和签名参数
+
+掘金接口需要 Cookie + 5 个签名参数（`aid`、`uuid`、`spider`、`msToken`、`a_bogus`）才能正常调用。
+
+**获取方法：**
 
 1. 打开浏览器，访问 [掘金官网](https://juejin.cn/) 并登录
-2. 按 `F12` 打开开发者工具
-3. 切换到 **Network（网络）** 标签页
-4. 刷新页面或点击任意一个请求
-5. 在请求头中找到 **Cookie** 字段，复制完整的 Cookie 值
+2. 按 `F12` 打开开发者工具，切换到 **Network（网络）** 标签页
+3. 在筛选框里输入 `get_cur_point`，然后刷新页面
+4. 点击列表中出现的 `get_cur_point` 请求
+5. 在右侧 **Headers** 面板中：
+   - 往下找到 **Request Headers** → `cookie:` → 复制整行值（这是 `JUEJIN_COOKIE`）
+   - 往上找到 **Query String Parameters**（查询参数），分别复制：
+     - `aid` → `JUEJIN_AID`
+     - `uuid` → `JUEJIN_UUID`
+     - `spider` → `JUEJIN_SPIDER`
+     - `msToken` → `JUEJIN_MS_TOKEN`
+     - `a_bogus` → `JUEJIN_A_BOGUS`
 
-> ⚠️ **注意**：Cookie 中包含你的登录凭证，请勿泄露给他人！
+> ⚠️ **注意**：这些都是你的登录凭证，请勿泄露给他人！
+>
+> 💡 **提示**：`msToken` 和 `a_bogus` 有效期较长（约 18 天以上），失效后重新获取即可。
 
 ### 第三步：配置 Secrets
 
@@ -37,6 +50,11 @@
 | Name | 说明 | 必填 |
 |------|------|------|
 | `JUEJIN_COOKIE` | 掘金登录 Cookie | ✅ 是 |
+| `JUEJIN_AID` | 签名参数 aid | ✅ 是 |
+| `JUEJIN_UUID` | 签名参数 uuid | ✅ 是 |
+| `JUEJIN_SPIDER` | 签名参数 spider | ✅ 是 |
+| `JUEJIN_MS_TOKEN` | 签名参数 msToken | ✅ 是 |
+| `JUEJIN_A_BOGUS` | 签名参数 a_bogus | ✅ 是 |
 | `PUSHPLUS_TOKEN` | PushPlus 微信推送 Token | ❌ 否 |
 | `SERVERCHAN_KEY` | Server酱 推送 Key | ❌ 否 |
 
@@ -122,18 +140,23 @@ npm start
 ## ⚠️ 注意事项
 
 1. **Cookie 有效期**：掘金 Cookie 一般有效期约 1 个月左右，失效后需要重新获取并更新 Secrets
-2. **签到规则**：请遵守掘金社区规则，合理使用本工具
-3. **Actions 配额**：GitHub 免费账户每月有 2000 分钟的 Actions 运行时间，本项目每天仅运行约 30 秒，完全够用
-4. **仓库权限**：确保 Fork 的仓库是 Public 的，Private 仓库的 Actions 配额较少
+2. **签名参数有效期**：`msToken` 和 `a_bogus` 有效期约 18 天以上，失效后同样重新获取即可
+3. **签到规则**：请遵守掘金社区规则，合理使用本工具
+4. **Actions 配额**：GitHub 免费账户每月有 2000 分钟的 Actions 运行时间，本项目每天仅运行约 30 秒，完全够用
+5. **仓库权限**：确保 Fork 的仓库是 Public 的，Private 仓库的 Actions 配额较少
 
-## 🔄 Cookie 失效怎么办？
+## 🔄 接口报错 / 返回空怎么办？
 
-如果签到失败，大概率是 Cookie 过期了：
+如果签到失败或返回空数据，可能是 Cookie 或签名参数过期了：
 
-1. 重新登录掘金，获取新的 Cookie
-2. 进入仓库 **Settings** → **Secrets and variables** → **Actions**
-3. 点击 `JUEJIN_COOKIE` 右侧的更新按钮
-4. 粘贴新的 Cookie 值并保存
+1. 重新登录掘金，按 F12 打开 Network
+2. 筛选 `get_cur_point`，刷新页面
+3. 点击请求，从 **Request Headers** 复制新的 `cookie`
+4. 从 **Query String Parameters** 复制新的 `msToken` 和 `a_bogus`
+5. 进入仓库 **Settings** → **Secrets and variables** → **Actions**
+6. 更新对应的 Secret 值并保存
+
+> 💡 一般只需要更新 `JUEJIN_COOKIE`、`JUEJIN_MS_TOKEN`、`JUEJIN_A_BOGUS` 这三个就行，`aid`、`uuid`、`spider` 基本不会变。
 
 ## 📜 免责声明
 

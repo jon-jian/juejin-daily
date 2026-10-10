@@ -41,6 +41,11 @@ jobs:
       - name: 执行签到抽奖
         env:
           JUEJIN_COOKIE: ${{ secrets.JUEJIN_COOKIE }}
+          JUEJIN_AID: ${{ secrets.JUEJIN_AID }}
+          JUEJIN_UUID: ${{ secrets.JUEJIN_UUID }}
+          JUEJIN_SPIDER: ${{ secrets.JUEJIN_SPIDER }}
+          JUEJIN_MS_TOKEN: ${{ secrets.JUEJIN_MS_TOKEN }}
+          JUEJIN_A_BOGUS: ${{ secrets.JUEJIN_A_BOGUS }}
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
         run: npm start
